@@ -1,0 +1,6 @@
+.env
+.dockerignore
+docker-compose.yml
+init.db
+Makefile
+.git

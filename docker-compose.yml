@@ -1,0 +1,90 @@
+name: "terrametr"
+services:
+  distance-calculator:
+    image: dockerhub.timeweb.cloud/smbrine/tm-distance-calculator-grpc:v1
+    pull_policy: always
+    container_name: distance-calculator
+    restart: always
+
+  tg-bot:
+    image: dockerhub.timeweb.cloud/smbrine/tm-tg-bot:v1
+    pull_policy: always
+    container_name: tg-bot
+    restart: always
+    depends_on:
+      - tg-migration
+    environment:
+      TG_BOT_KEY: "${TG_BOT_KEY}"
+      DEBUG: "false"
+      PUBLIC_ADDR: "${WEBHOOK_ADDR}"
+      BIND_PORT: 8808
+      BIND_HOST: "0.0.0.0"
+      POSTGRES_URL: "postgresql+asyncpg://${POSTGRES_USER}:${TERRAMETR_DB_PASSWORD}@postgres:5432/telegram"
+      ADMIN_CHAT_ID: "855235544"
+      REDIS_URL: "redis://redis:6379/0"
+    ports:
+      - "9991:8808"
+
+  tg-migration:
+    image: dockerhub.timeweb.cloud/smbrine/tm-tg-bot:v1
+    pull_policy: always
+    container_name: tg-migration
+    restart: on-failure
+    command: alembic upgrade head
+    depends_on:
+      - postgres
+    environment:
+      POSTGRES_URL: "postgresql+asyncpg://${POSTGRES_USER}:${TERRAMETR_DB_PASSWORD}@postgres:5432/telegram"
+      TG_BOT_KEY: "${TG_BOT_KEY}"
+      DEBUG: "false"
+      PUBLIC_ADDR: "${WEBHOOK_ADDR}"
+      BIND_PORT: 8808
+      BIND_HOST: "0.0.0.0"
+      ADMIN_CHAT_ID: "-1001996373624"
+      REDIS_URL: "redis://redis:6379/0"
+
+  redis:
+    image: dockerhub.timeweb.cloud/redis:7.2.4
+    container_name: redis-terrametr
+    environment:
+      REDIS_PORT: 6379
+      REDIS_DATABASES: 16
+      REDIS_REPLICATION_MODE: master
+    volumes:
+      - "${PV_LOC}/unified/redis/data:/data"
+    restart: always
+
+  postgres:
+    image: dockerhub.timeweb.cloud/postgres:16.2-bullseye
+    container_name: postgres-terrametr
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: "${TERRAMETR_DB_PASSWORD}"
+      POSTGRES_USER: "${POSTGRES_USER}"
+      PGDATA: /data/pgdata
+    volumes:
+      - "${PV_LOC}/unified/postgres/postgres-data:/data/pgdata"
+      - "${PV_LOC}/unified/postgres/bckp:/mnt/bckp"
+      - "./init.sql:/docker-entrypoint-initdb.d/init.sql"
+
+  # utilities
+  pgadmin:
+    image: dockerhub.timeweb.cloud/dpage/pgadmin4:latest
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "${PGADMIN_DEFAULT_EMAIL}"
+      PGADMIN_DEFAULT_PASSWORD: "${PGADMIN_DEFAULT_PASSWORD}"
+    volumes:
+      - ${PV_LOC}/pgadmin:/data
+    ports:
+      - "9992:80"
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "9993:8081"

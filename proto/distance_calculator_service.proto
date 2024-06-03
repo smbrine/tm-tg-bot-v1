@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package distancecalculator;
+
+import "google/protobuf/struct.proto";
+
+service DistanceCalculatorService {
+  rpc CalculateDistance(CalculateDistanceRequest) returns (CalculateDistanceResponse) {}
+}
+
+message CalculateDistanceRequest {
+    double latitude = 1;
+    double longitude = 2;
+    double search_distance = 3;
+    string object = 4;
+}
+
+message CalculateDistanceResponse {
+  bool is_found = 1;
+  double distance = 2;
+  string object = 3;
+}
