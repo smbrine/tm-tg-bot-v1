@@ -14,11 +14,13 @@ from telegram.ext import (
     filters,
 )
 from app import settings
-from utils import DistanceCalculator
+from utils import DensityCalculator, DistanceCalculator, MapSessions
 
 bot = Bot(token=settings.TG_BOT_KEY)
 dp = ApplicationBuilder().bot(bot).build()
 pb = DistanceCalculator(host=settings.DISTANCE_CALCULATOR_GRPC)
+ms = MapSessions(host=settings.MAP_SESSIONS_GRPC)
+dc = DensityCalculator(host=settings.DENSITY_CALCULATOR_GRPC)
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",

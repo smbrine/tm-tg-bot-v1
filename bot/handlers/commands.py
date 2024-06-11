@@ -18,10 +18,6 @@ async def command_start(
 ) -> None:
     tasks = []
     user_id = update.effective_user.id
-    msg = (
-        'Привет! <a href="https://t.me/coffegis">CoffeeGIS</a> — сервис поиска specialty кофеен. '
-        "Отправь мне свою геопозицию и я подскажу где неподалёку есть кофейни из нашей подборки!"
-    )
     msg = "Привет! Отправь мне геопозицию и я подскажу удаленность интересующих тебя объектов."
     if not (
         user_bytes := await redis.hget(

@@ -16,6 +16,6 @@ async def generate_distance_card(
     if not is_found:
         msg = f"Не нашел {name} в радиусе {await my_round(search_distance)}."
     else:
-        msg = f"Нашел {name} в {await my_round(distance)} от указанного места:\n"
-        msg += f'<pre language="json">{json.dumps(obj, ensure_ascii=False)}</pre>'
+        msg = f"Нашел {name} в {await my_round(distance)} от указанного места."
+        # msg += f'<pre language="json">{json.dumps(obj, ensure_ascii=False)}</pre>'
     return msg

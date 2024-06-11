@@ -1,6 +1,6 @@
 .env
 .dockerignore
 docker-compose.yml
-init.db
+init.sql
 Makefile
 .git

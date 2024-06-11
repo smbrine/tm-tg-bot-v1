@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package mapsessions;
+
+service MapSessionsService {
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse) {}
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {}
+}
+
+message CreateSessionRequest {
+  int64 user_id = 1;
+  repeated Feature features = 2;
+}
+
+message CreateSessionResponse {
+  string session_uuid = 1;
+}
+
+message Feature {
+  string type = 1;
+  Geometry geometry = 2;
+  string name = 3;
+}
+
+message Geometry {
+  repeated Point points = 1;
+}
+
+message Point {
+  double latitude = 1;
+  double longitude = 2;
+}
+
+message SessionRecommendedMapCenter {
+  double latitude = 1;
+  double longitude = 2;
+  int32 zoom = 3;
+}
+
+message GetSessionRequest {
+ string session_id = 1;
+}
+
+message GetSessionResponse {
+  repeated Feature features = 1;
+  SessionRecommendedMapCenter recommended_map_center = 2;
+}

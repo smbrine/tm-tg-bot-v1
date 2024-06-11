@@ -1,13 +1,34 @@
 name: "terrametr"
 services:
-  distance-calculator:
-    image: dockerhub.timeweb.cloud/smbrine/tm-distance-calculator-grpc:v1
+  distance-calc:
+    image: smbrine/tm-distance-calculator-grpc:v1.2
     pull_policy: always
-    container_name: distance-calculator
+    container_name: distance-calc
     restart: always
+    environment:
+      BIND_PORT: 50051
+
+  map-sessions:
+    image: smbrine/tm-map-sessions-grpc:v1.1.1
+    pull_policy: always
+    container_name: map-sessions
+    restart: always
+    depends_on:
+      - map-sessions-migration
+    environment:
+      BIND_PORT: 50051
+      POSTGRES_URL: "postgresql+asyncpg://${POSTGRES_USER}:${TERRAMETR_DB_PASSWORD}@postgres:5432/map_sessions"
+
+  density-calc:
+    image: smbrine/tm-density-calculator-grpc:v1
+    pull_policy: always
+    container_name: density-calc
+    restart: always
+    environment:
+      BIND_PORT: 50051
 
   tg-bot:
-    image: dockerhub.timeweb.cloud/smbrine/tm-tg-bot:v1
+    image: smbrine/tm-tg-bot:v1.1.2
     pull_policy: always
     container_name: tg-bot
     restart: always
@@ -22,11 +43,50 @@ services:
       POSTGRES_URL: "postgresql+asyncpg://${POSTGRES_USER}:${TERRAMETR_DB_PASSWORD}@postgres:5432/telegram"
       ADMIN_CHAT_ID: "855235544"
       REDIS_URL: "redis://redis:6379/0"
+      DISTANCE_CALCULATOR_GRPC: "distance-calc:50051"
+      MAP_SESSIONS_GRPC: 'map-sessions:50051'
+      DENSITY_CALCULATOR_GRPC: "density-calc:50051"
+      MAP_URL: 'https://tg.terrametr.ru/map'
     ports:
       - "9991:8808"
 
+  map-frontend:
+    image: smbrine/tm-map-frontend:v1
+    pull_policy: always
+    container_name: map-frontend
+    restart: always
+    ports:
+      - '9995:8888'
+
+  map-sessions-api:
+    image: smbrine/tm-map-sessions-api:v1
+    pull_policy: always
+    container_name: map-sessions-api
+    restart: always
+    depends_on:
+      - map-sessions
+    environment:
+      BIND_HOST: "0.0.0.0"
+      BIND_PORT: 8000
+      MAP_SESSIONS_GRPC: 'map-sessions:50051'
+    ports:
+      - '9994:8000'
+
+  # Migrations
+  map-sessions-migration:
+    image: smbrine/tm-map-sessions-grpc:v1
+    pull_policy: always
+    container_name: map-sessions-migration
+    restart: on-failure
+    command: alembic upgrade head
+    depends_on:
+      - postgres
+    environment:
+      BIND_PORT: 50051
+      POSTGRES_URL: "postgresql+asyncpg://${POSTGRES_USER}:${TERRAMETR_DB_PASSWORD}@postgres:5432/map_sessions"
+
   tg-migration:
-    image: dockerhub.timeweb.cloud/smbrine/tm-tg-bot:v1
+    image: smbrine/tm-tg-bot:v1.1
     pull_policy: always
     container_name: tg-migration
     restart: on-failure
@@ -34,17 +94,21 @@ services:
     depends_on:
       - postgres
     environment:
-      POSTGRES_URL: "postgresql+asyncpg://${POSTGRES_USER}:${TERRAMETR_DB_PASSWORD}@postgres:5432/telegram"
       TG_BOT_KEY: "${TG_BOT_KEY}"
       DEBUG: "false"
       PUBLIC_ADDR: "${WEBHOOK_ADDR}"
       BIND_PORT: 8808
       BIND_HOST: "0.0.0.0"
-      ADMIN_CHAT_ID: "-1001996373624"
+      POSTGRES_URL: "postgresql+asyncpg://${POSTGRES_USER}:${TERRAMETR_DB_PASSWORD}@postgres:5432/telegram"
+      ADMIN_CHAT_ID: "855235544"
       REDIS_URL: "redis://redis:6379/0"
+      DISTANCE_CALCULATOR_GRPC: "distance-calc:50051"
+      MAP_SESSIONS_GRPC: 'map-sessions:50051'
+      MAP_URL: 'https://tg.terrametr.ru/map'
 
+  # DBs
   redis:
-    image: dockerhub.timeweb.cloud/redis:7.2.4
+    image: redis:7.2.4
     container_name: redis-terrametr
     environment:
       REDIS_PORT: 6379
@@ -55,7 +119,7 @@ services:
     restart: always
 
   postgres:
-    image: dockerhub.timeweb.cloud/postgres:16.2-bullseye
+    image: postgres:16.2-bullseye
     container_name: postgres-terrametr
     restart: always
     environment:
@@ -69,7 +133,7 @@ services:
 
   # utilities
   pgadmin:
-    image: dockerhub.timeweb.cloud/dpage/pgadmin4:latest
+    image: dpage/pgadmin4:latest
     restart: always
     environment:
       PGADMIN_DEFAULT_EMAIL: "${PGADMIN_DEFAULT_EMAIL}"
@@ -78,6 +142,7 @@ services:
       - ${PV_LOC}/pgadmin:/data
     ports:
       - "9992:80"
+
   redis-commander:
     image: rediscommander/redis-commander:latest
     restart: always
